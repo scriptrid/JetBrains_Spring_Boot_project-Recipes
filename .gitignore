@@ -1,0 +1,8 @@
+Recipes/*
+course-info.yaml
+course-remote-info.yaml
+.idea
+.gradle
+Recipes/task/out
+Recipes/task/build
+!Recipes/task/

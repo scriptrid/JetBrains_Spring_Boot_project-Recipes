@@ -6,9 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import recipes.model.dto.CreatedRecipeDto;
 import recipes.model.dto.RecipeDto;
-import recipes.model.entity.RecipeEntity;
-import recipes.repository.RecipesRepository;
+import recipes.model.dto.RecipeUpdateDto;
 import recipes.service.RecipeService;
 
 import javax.validation.Valid;
@@ -17,47 +17,48 @@ import javax.validation.Valid;
 @Slf4j
 @ToString
 public class RecipeController {
-
-    private final RecipesRepository repository;
     private final RecipeService service;
 
-    public RecipeController(RecipesRepository repository, RecipeService service) {
-        this.repository = repository;
+    public RecipeController(RecipeService service) {
         this.service = service;
     }
 
     @GetMapping("/api/recipe/{id}")
     public RecipeDto getRecipe(@PathVariable long id) {
-        if (repository.existsById(id)) {
-            RecipeDto dto = new RecipeDto(repository.getById(id));
-            log.info("Recipe successfully returned. {}", dto);
-            return dto;
-        } else {
-            log.warn("Not found recipe by id:{}", id);
+        return service.getRecipe(id).orElseThrow(() -> {
+            log.warn("Entity not found by id {}", id);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found");
-        }
+        });
     }
 
+//    @GetMapping("/api/recipe/search")
+//    public List<RecipeDto> searchRecipes(@RequestParam String category, @RequestParam String name) {
+//
+//    }
+
     @PostMapping("/api/recipe/new")
-    public String addRecipe(@RequestBody @Valid RecipeDto dto) {
+    public CreatedRecipeDto addRecipe(@RequestBody @Valid RecipeUpdateDto dto) {
         long entityId = service.submitRecipe(dto);
-        return String.format("""
-                {
-                    "id": %d
-                }
-                """, entityId);
+        return new CreatedRecipeDto(entityId);
+    }
+
+    @PutMapping("/api/recipe/{id}")
+    public ResponseEntity<Void> updateRecipe(@PathVariable long id, @RequestBody @Valid RecipeUpdateDto dto) {
+        if (service.updateEntityById(id, dto)) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/api/recipe/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable long id) {
-        if (repository.existsById(id)) {
-            RecipeEntity deletingEntity = repository.getById(id);
-            repository.deleteById(id);
-            log.info("Successfully deleted a line: {}", deletingEntity);
-            log.info("Return code: {}", ResponseEntity.noContent().build());
+        if (service.deleteRecipe(id)) {
+            log.info("Successfully deleted an entity by id : {}", id);
+            log.info("Return code: {}", HttpStatus.NO_CONTENT.value());
             return ResponseEntity.noContent().build();
         } else {
-            log.info("Return code: {}", ResponseEntity.notFound().build());
+            log.info("Return code: {}", HttpStatus.NOT_FOUND.value());
             return ResponseEntity.notFound().build();
         }
     }

@@ -29,5 +29,11 @@ public class DirectionEntity {
     public DirectionEntity(String direction) {
         this.direction = direction;
     }
+
+    public DirectionEntity(RecipeEntity recipe, String direction) {
+        this.recipe = recipe;
+        this.direction = direction;
+    }
+
 }
 

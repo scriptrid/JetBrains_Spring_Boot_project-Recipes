@@ -26,7 +26,9 @@ public class IngredientEntity {
     @Column(name = "ingredient")
     private String ingredient;
 
-    public IngredientEntity(String ingredient) {
+    public IngredientEntity(RecipeEntity recipe, String ingredient) {
+        this.recipe = recipe;
         this.ingredient = ingredient;
     }
+
 }

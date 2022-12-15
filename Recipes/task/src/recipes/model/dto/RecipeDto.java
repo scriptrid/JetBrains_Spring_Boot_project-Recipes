@@ -1,42 +1,17 @@
 package recipes.model.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-import recipes.model.entity.DirectionEntity;
-import recipes.model.entity.IngredientEntity;
-import recipes.model.entity.RecipeEntity;
+import lombok.Builder;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotEmpty;
+import java.time.ZonedDateTime;
+import java.util.List;
 
-@Getter
-@AllArgsConstructor
-@NoArgsConstructor
-@ToString
-public class RecipeDto {
-    @NotBlank
-    private String name;
-    @NotBlank
-    private String description;
-    @NotEmpty
-    private String[] ingredients;
-    @NotEmpty
-    private String[] directions;
-
-    public RecipeDto(RecipeEntity entity) {
-        this.name = entity.getName();
-        this.description = entity.getDescription();
-        this.ingredients = entity.getIngredients()
-                .stream()
-                .map(IngredientEntity::getIngredient)
-                .toList()
-                .toArray(String[]::new);
-        this.directions = entity.getDirections()
-                .stream()
-                .map(DirectionEntity::getDirection)
-                .toList()
-                .toArray(String[]::new);
-    }
+@Builder
+public record RecipeDto(
+        String name,
+        String category,
+        ZonedDateTime dateTime,
+        String description,
+        List<String> ingredients,
+        List<String> directions
+) {
 }

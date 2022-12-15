@@ -5,11 +5,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.springframework.validation.annotation.Validated;
-import recipes.model.dto.RecipeDto;
+import recipes.model.dto.RecipeUpdateDto;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
-import java.util.Arrays;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Entity
@@ -26,6 +26,12 @@ public class RecipeEntity {
     private long id;
 
     @NotBlank
+    @Column(name = "category")
+    private String category;
+    @Column(name = "date")
+    private ZonedDateTime date;
+
+    @NotBlank
     @Column(name = "name")
     private String name;
 
@@ -33,21 +39,23 @@ public class RecipeEntity {
     @Column(name = "description")
     private String description;
 
-    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private List<IngredientEntity> ingredients;
-    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private List<DirectionEntity> directions;
 
-    public RecipeEntity(RecipeDto dto) {
+    public RecipeEntity(RecipeUpdateDto dto) {
         this.name = dto.getName();
+        this.category = dto.getCategory();
+        this.date = ZonedDateTime.now();
         this.description = dto.getDescription();
-        this.ingredients = Arrays.stream(dto.getIngredients())
-                .map(IngredientEntity::new)
+        this.ingredients = dto.getIngredients().stream()
+                .map(ingredient -> new IngredientEntity(this, ingredient))
                 .toList();
-        this.directions = Arrays.stream(dto.getDirections())
-                .map(DirectionEntity::new)
+        this.directions = dto.getIngredients().stream()
+                .map(direction -> new DirectionEntity(this, direction))
                 .toList();
     }
 }
