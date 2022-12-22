@@ -1,7 +1,11 @@
 package recipes.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import recipes.model.dto.RecipeDto;
 import recipes.model.dto.RecipeUpdateDto;
 import recipes.model.entity.DirectionEntity;
@@ -11,6 +15,7 @@ import recipes.repository.RecipesRepository;
 
 import javax.transaction.Transactional;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -64,7 +69,9 @@ public class RecipeService {
     @Transactional
     public boolean deleteRecipe(long id) {
         boolean success = repository.existsById(id);
-        repository.deleteById(id);
+        if (success) {
+            repository.deleteById(id);
+        }
         return success;
     }
 
@@ -78,7 +85,7 @@ public class RecipeService {
                 .name(entity.getName())
                 .category(entity.getCategory())
                 .description(entity.getDescription())
-                .dateTime(entity.getDate())
+                .date(entity.getDate())
                 .ingredients(entity.getIngredients()
                         .stream()
                         .map(IngredientEntity::getIngredient)
@@ -89,5 +96,25 @@ public class RecipeService {
                         .toList())
                 .build();
 
+    }
+
+    public List<RecipeDto> findAll(String category, String name) {
+        if ((category != null && name != null) || (category == null && name == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
+        Sort sort = Sort.by("date").descending();
+
+        Specification<RecipeEntity> spec = Specification.where(null);
+
+        if (category != null) {
+            spec = spec.and((root, query, criteriaBuilder) -> criteriaBuilder.equal(criteriaBuilder.lower(root.get("category")), category.toLowerCase()));
+        }
+
+        if (name != null) {
+            spec = spec.and((root, query, criteriaBuilder) -> criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+        }
+
+        return repository.findAll(spec, sort).stream().map(this::toDto).toList();
     }
 }

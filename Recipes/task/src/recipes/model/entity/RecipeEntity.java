@@ -54,7 +54,7 @@ public class RecipeEntity {
         this.ingredients = dto.getIngredients().stream()
                 .map(ingredient -> new IngredientEntity(this, ingredient))
                 .toList();
-        this.directions = dto.getIngredients().stream()
+        this.directions = dto.getDirections().stream()
                 .map(direction -> new DirectionEntity(this, direction))
                 .toList();
     }

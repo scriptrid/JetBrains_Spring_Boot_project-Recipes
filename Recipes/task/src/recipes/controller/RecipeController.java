@@ -12,6 +12,7 @@ import recipes.model.dto.RecipeUpdateDto;
 import recipes.service.RecipeService;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -31,10 +32,10 @@ public class RecipeController {
         });
     }
 
-//    @GetMapping("/api/recipe/search")
-//    public List<RecipeDto> searchRecipes(@RequestParam String category, @RequestParam String name) {
-//
-//    }
+    @GetMapping("/api/recipe/search")
+    public List<RecipeDto> searchRecipes( String category, String name) {
+        return service.findAll(category, name);
+    }
 
     @PostMapping("/api/recipe/new")
     public CreatedRecipeDto addRecipe(@RequestBody @Valid RecipeUpdateDto dto) {
