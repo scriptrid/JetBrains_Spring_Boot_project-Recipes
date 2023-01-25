@@ -4,13 +4,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import recipes.exceptions.RecipeNotFoundException;
+import recipes.exceptions.WrongUserException;
 import recipes.model.dto.RecipeDto;
 import recipes.model.dto.RecipeUpdateDto;
 import recipes.model.entity.DirectionEntity;
 import recipes.model.entity.IngredientEntity;
 import recipes.model.entity.RecipeEntity;
+import recipes.model.entity.UserEntity;
 import recipes.repository.RecipesRepository;
 
 import javax.transaction.Transactional;
@@ -23,14 +27,17 @@ import java.util.Optional;
 public class RecipeService {
 
     private final RecipesRepository repository;
+    private final UserService userService;
 
-    public RecipeService(RecipesRepository repository) {
+    public RecipeService(RecipesRepository repository,
+                         UserService userService) {
         this.repository = repository;
+        this.userService = userService;
     }
 
     @Transactional
-    public long submitRecipe(RecipeUpdateDto dto) {
-        RecipeEntity entity = new RecipeEntity(dto);
+    public long submitRecipe(RecipeUpdateDto dto, UserDetails userDetails) {
+        RecipeEntity entity = toEntity(dto, userDetails);
         repository.save(entity);
         log.info("""
                 Successfully added a new recipe! {}
@@ -41,12 +48,8 @@ public class RecipeService {
     }
 
     @Transactional
-    public boolean updateEntityById(long id, RecipeUpdateDto update) {
-        Optional<RecipeEntity> optional = repository.findById(id);
-        if (optional.isEmpty()) {
-            return false;
-        }
-        RecipeEntity entity = optional.get();
+    public void updateEntityById(UserDetails userDetails, long id, RecipeUpdateDto update) {
+        RecipeEntity entity = getRecipeAndCheckAccess(id, userDetails);
         entity.setName(update.getName());
         entity.setDescription(update.getDescription());
         entity.setCategory(update.getCategory());
@@ -63,21 +66,29 @@ public class RecipeService {
         entity.setDate(ZonedDateTime.now());
 
         log.info("A recipe by id {} was successfully updated: {}", id, entity);
-        return true;
     }
 
     @Transactional
-    public boolean deleteRecipe(long id) {
-        boolean success = repository.existsById(id);
-        if (success) {
-            repository.deleteById(id);
-        }
-        return success;
+    public void deleteRecipe(UserDetails userDetails, long id) {
+        RecipeEntity entity = getRecipeAndCheckAccess(id, userDetails);
+        repository.delete(entity);
     }
 
     public Optional<RecipeDto> getRecipe(long id) {
         Optional<RecipeEntity> entity = repository.findById(id);
         return entity.map(this::toDto);
+    }
+
+    private RecipeEntity getRecipeAndCheckAccess(long id, UserDetails userDetails) {
+        Optional<RecipeEntity> optional = repository.findById(id);
+        if (optional.isEmpty()) {
+            throw new RecipeNotFoundException();
+        }
+        RecipeEntity entity = optional.get();
+        if (!userDetails.getUsername().equals(entity.getAuthor().getEmail())) {
+            throw new WrongUserException();
+        }
+        return entity;
     }
 
     private RecipeDto toDto(RecipeEntity entity) {
@@ -96,6 +107,23 @@ public class RecipeService {
                         .toList())
                 .build();
 
+    }
+
+    private RecipeEntity toEntity(RecipeUpdateDto dto, UserDetails details) {
+        UserEntity user = userService.getUser(details);
+        RecipeEntity entity = new RecipeEntity();
+        entity.setName(dto.getName());
+        entity.setCategory(dto.getCategory());
+        entity.setDate(ZonedDateTime.now());
+        entity.setDescription(dto.getDescription());
+        entity.setIngredients(dto.getIngredients().stream()
+                .map(ingredient -> new IngredientEntity(entity, ingredient))
+                .toList());
+        entity.setDirections(dto.getDirections().stream()
+                .map(direction -> new DirectionEntity(entity, direction))
+                .toList());
+        entity.setAuthor(user);
+        return entity;
     }
 
     public List<RecipeDto> findAll(String category, String name) {
